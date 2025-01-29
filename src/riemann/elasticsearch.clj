@@ -91,19 +91,24 @@
 
 (defn gen-request-bulk-body-reduce
   "Reduction fn used in `gen-request-bulk-body` to generate the body request"
-  [elem]
+  [action+metadata maybe-sources]
   (concat
     [;;action and metadata
-     (json/generate-string {(:es-action elem) (:es-metadata elem)})]
-    ;; source (optional)
-    (when (:es-source elem)
-      [(json/generate-string (:es-source elem))])))
+     (json/generate-string action+metadata)]
+    ;; sources (optional)
+    (when maybe-sources
+      (map json/generate-string maybe-sources))))
 
 (defn gen-request-bulk-body
-  "Takes a list of events, generates the body request for Elasticsearch"
+  "Takes a list of events, generates the body request for Elasticsearch bulk API"
   [events]
   (when (not-empty events)
-    (str (string/join "\n" (mapcat gen-request-bulk-body-reduce events)) "\n")))
+    (let [partitioned (partition-by (fn [elem] {(:es-action elem) (:es-metadata elem)}) events)
+          bulked (mapcat (fn [elems]
+                           (gen-request-bulk-body-reduce {(:es-action (first elems)) (:es-metadata (first elems))}
+                                                         (keep :es-source elems)))
+                         partitioned)]
+      (str (string/join "\n" bulked) "\n"))))
 
 (defn default-bulk-formatter
   "Returns a function which accepts an event and formats it for the Elasticsearch bulk API.

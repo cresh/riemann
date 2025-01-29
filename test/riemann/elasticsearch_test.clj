@@ -116,16 +116,17 @@
 
 (deftest ^:elasticsearch gen-request-bulk-body-reduce-test
   (is (= ["{\"index\":{\"_index\":\"test\",\"_type\":\"type1\",\"_id\":\"1\"}}" "{\"field1\":\"value1\"}"]
-         (gen-request-bulk-body-reduce {:es-action "index"
-                                        :es-metadata {:_index "test"
-                                                      :_type "type1"
-                                                      :_id "1"}
-                                        :es-source {:field1 "value1"}})))
+         (gen-request-bulk-body-reduce {"index"
+                                        {:_index "test"
+                                         :_type "type1"
+                                         :_id "1"}}
+                                       [{:field1 "value1"}])))
   (is (= ["{\"delete\":{\"_index\":\"test\",\"_type\":\"type1\",\"_id\":\"2\"}}"]
-         (gen-request-bulk-body-reduce {:es-action "delete"
-                                        :es-metadata {:_index "test"
-                                                      :_type "type1"
-                                                      :_id "2"}}))))
+         (gen-request-bulk-body-reduce {"delete"
+                                        {:_index "test"
+                                         :_type "type1"
+                                         :_id "2"}}
+                                       []))))
 
 (deftest ^:elasticsearch gen-request-bulk-body-test
   (is (= "{\"index\":{\"_index\":\"test\",\"_type\":\"type1\",\"_id\":\"1\"}}\n{\"field1\":\"value1\"}\n"
@@ -144,6 +145,21 @@
                                   :es-metadata {:_index "test"
                                                 :_type "type1"
                                                 :_id "2"}}])))
+  (is (= "{\"index\":{\"_index\":\"test\",\"_type\":\"type1\",\"_id\":\"1\"}}\n{\"field1\":\"value1\"}\n{\"field1\":\"value2\"}\n{\"delete\":{\"_index\":\"test\",\"_type\":\"type1\",\"_id\":\"2\"}}\n"
+         (gen-request-bulk-body [{:es-action "index"
+                                  :es-metadata {:_index "test"
+                                                :_type "type1"
+                                                :_id "1"}
+                                  :es-source {:field1 "value1"}}
+                                 {:es-action "index"
+                                  :es-metadata {:_index "test"
+                                                :_type "type1"
+                                                :_id "1"}
+                                  :es-source {:field1 "value2"}}
+                                 {:es-action "delete"
+                                  :es-metadata {:_index "test"
+                                                :_type "type1"
+                                                :_id "2"}}])))
   (is (= "{\"index\":{\"_index\":\"test\",\"_type\":\"type1\",\"_id\":\"1\"}}\n{\"field1\":\"value1\"}\n{\"delete\":{\"_index\":\"test\",\"_type\":\"type1\",\"_id\":\"2\"}}\n{\"index\":{\"_index\":\"test\",\"_type\":\"type1\",\"_id\":\"1\"}}\n{\"field1\":\"value1\"}\n"
          (gen-request-bulk-body [{:es-action "index"
                                   :es-metadata {:_index "test"
@@ -158,7 +174,32 @@
                                   :es-metadata {:_index "test"
                                                 :_type "type1"
                                                 :_id "1"}
-                                  :es-source {:field1 "value1"}}]))))
+                                  :es-source {:field1 "value1"}}])))
+  (is (= "{\"index\":{\"_index\":\"test\",\"_type\":\"type1\",\"_id\":\"1\"}}\n{\"field1\":\"value1\"}\n{\"field1\":\"value2\"}\n{\"delete\":{\"_index\":\"test\",\"_type\":\"type1\",\"_id\":\"2\"}}\n{\"index\":{\"_index\":\"test\",\"_type\":\"type1\",\"_id\":\"1\"}}\n{\"field1\":\"value1\"}\n{\"field1\":\"value2\"}\n"
+         (gen-request-bulk-body [{:es-action "index"
+                                  :es-metadata {:_index "test"
+                                                :_type "type1"
+                                                :_id "1"}
+                                  :es-source {:field1 "value1"}}
+                                 {:es-action "index"
+                                  :es-metadata {:_index "test"
+                                                :_type "type1"
+                                                :_id "1"}
+                                  :es-source {:field1 "value2"}}
+                                 {:es-action "delete"
+                                  :es-metadata {:_index "test"
+                                                :_type "type1"
+                                                :_id "2"}}
+                                 {:es-action "index"
+                                  :es-metadata {:_index "test"
+                                                :_type "type1"
+                                                :_id "1"}
+                                  :es-source {:field1 "value1"}}
+                                 {:es-action "index"
+                                  :es-metadata {:_index "test"
+                                                :_type "type1"
+                                                :_id "1"}
+                                  :es-source {:field1 "value2"}}]))))
 
 (deftest ^:elasticsearch elasticsearch-bulk-test
   (with-mock [calls clj-http.client/post]
@@ -259,8 +300,7 @@
                         :tags ["t1"]
                         :ttl 30
                         :foo "bar"
-                        (keyword "@timestamp") "2017-04-07T12:16:22.000Z"
-                        }}))
+                        (keyword "@timestamp") "2017-04-07T12:16:22.000Z"}}))
     (is (= (formatter {:host "foo"
                        :metric 10
                        :service "bar"
@@ -283,8 +323,7 @@
                         :tags ["t1"]
                         :ttl 30
                         :foo "bar"
-                        (keyword "@timestamp") "2017-04-07T12:16:22.000Z"
-                        }}))))
+                        (keyword "@timestamp") "2017-04-07T12:16:22.000Z"}}))))
 
 (deftest ^:integration ^:elasticsearch elasticsearch-bulk-integration-test
   (testing "Without formatter"
